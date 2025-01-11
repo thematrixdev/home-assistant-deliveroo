@@ -1,0 +1,15 @@
+{
+  "version": "1.0.0",
+  "issue_tracker": "https://github.com/thematrixdev/home-assistant-deliveroo/issues",
+
+  "domain": "deliveroohk",
+  "name": "Deliveroo HK",
+  "integration_type": "service",
+  "documentation": "https://github.com/thematrixdev/home-assistant-deliveroo",
+  "codeowners": [
+    "@thematrixdev"
+  ],
+  "config_flow": true,
+  "loggers": ["deliveroohk"],
+  "iot_class": "cloud_polling"
+}
