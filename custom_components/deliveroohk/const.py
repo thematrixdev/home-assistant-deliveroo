@@ -5,7 +5,9 @@ from datetime import timedelta
 DOMAIN = "deliveroohk"
 CONF_TOKEN = "token"
 
-SCAN_INTERVAL = timedelta(minutes=5)
+# Update intervals
+SCAN_INTERVAL = timedelta(minutes=1)  # Default interval for checking orders
+ACTIVE_ORDER_SCAN_INTERVAL = timedelta(seconds=30)  # Interval when order is active
 
 API_ENDPOINT = "https://api.hk.deliveroo.com/consumer/order-history/v1/orders"
 API_ORDER_STATUS_ENDPOINT = "https://api.hk.deliveroo.com/consumer/v2-6/consumer_order_statuses/{id}"

@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 import aiohttp
@@ -17,8 +17,10 @@ from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
     DataUpdateCoordinator,
 )
+from homeassistant.util.dt import utcnow
 
 from .const import (
+    ACTIVE_ORDER_SCAN_INTERVAL,
     API_ENDPOINT,
     API_ORDER_STATUS_ENDPOINT,
     CONF_TOKEN,
@@ -55,10 +57,20 @@ class DeliverooHKCoordinator(DataUpdateCoordinator):
         )
         self.token = token
         self.session = aiohttp_client.async_get_clientsession(hass)
+        self._active_order = False
+        self._last_update = None
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Update data via API."""
         try:
+            current_time = utcnow()
+            
+            # If we have an active order and it's been less than SCAN_INTERVAL since last update,
+            # but more than ACTIVE_ORDER_SCAN_INTERVAL, force an update
+            if (self._active_order and self._last_update and 
+                current_time - self._last_update > ACTIVE_ORDER_SCAN_INTERVAL):
+                self.update_interval = ACTIVE_ORDER_SCAN_INTERVAL
+            
             headers = {"Authorization": f"Bearer {self.token}"}
             params = {"limit": "1", "offset": "0", "include_ugc": "true"}
 
@@ -67,14 +79,20 @@ class DeliverooHKCoordinator(DataUpdateCoordinator):
             ) as response:
                 if response.status != 200:
                     _LOGGER.error("Failed to get order data: %s", response.status)
+                    self._active_order = False
+                    self.update_interval = SCAN_INTERVAL
                     return {}
 
                 data = await response.json()
                 if not data.get("orders"):
+                    self._active_order = False
+                    self.update_interval = SCAN_INTERVAL
                     return {"state": "IDLE"}
 
                 order = data["orders"][0]
                 if order.get("status") == "DELIVERED":
+                    self._active_order = False
+                    self.update_interval = SCAN_INTERVAL
                     return {"state": "IDLE"}
 
                 # Get detailed order status
@@ -94,19 +112,36 @@ class DeliverooHKCoordinator(DataUpdateCoordinator):
                     
                     if "data" in status_data and "attributes" in status_data["data"]:
                         attrs = status_data["data"]["attributes"]
-                        state = attrs.get("ui_status", "UNKNOWN")
+                        
+                        # Get current progress percentage and processing steps
+                        current_progress = attrs.get("current_progress_percentage", 0)
+                        processing_steps = attrs.get("processing_steps", [])
+                        
+                        # Find the current step based on progress percentage
+                        current_step = processing_steps[0]["title"]  # Default to first step
+                        for step in processing_steps:
+                            if current_progress <= step["ends_at_progress_percentage"]:
+                                current_step = step["title"]
+                                break
                         
                         # Add optional attributes if they exist
                         for key in ["eta_message", "message", "fulfillment_type", "updated_at", "current_progress_percentage"]:
                             if key in attrs:
                                 attributes[key] = attrs[key]
                         
-                        return {"state": state, "attributes": attributes}
+                        # Set active order flag and update interval
+                        self._active_order = True
+                        self.update_interval = ACTIVE_ORDER_SCAN_INTERVAL
+                        self._last_update = current_time
+                        
+                        return {"state": current_step, "attributes": attributes}
 
                     return {}
 
         except aiohttp.ClientError as error:
             _LOGGER.error("Error fetching data: %s", error)
+            self._active_order = False
+            self.update_interval = SCAN_INTERVAL
             return {}
 
 
