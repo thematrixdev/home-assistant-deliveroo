@@ -113,16 +113,19 @@ class DeliverooHKCoordinator(DataUpdateCoordinator):
                     if "data" in status_data and "attributes" in status_data["data"]:
                         attrs = status_data["data"]["attributes"]
                         
-                        # Get current progress percentage and processing steps
-                        current_progress = attrs.get("current_progress_percentage", 0)
+                        # Get processing steps
                         processing_steps = attrs.get("processing_steps", [])
                         
-                        # Find the current step based on progress percentage
-                        current_step = processing_steps[0]["title"]  # Default to first step
+                        # Find current step based on is_current flag
+                        current_step = None
                         for step in processing_steps:
-                            if current_progress <= step["ends_at_progress_percentage"]:
+                            if step.get("is_current", False):
                                 current_step = step["title"]
                                 break
+                        
+                        # If no current step found (shouldn't happen), use first step
+                        if current_step is None and processing_steps:
+                            current_step = processing_steps[0]["title"]
                         
                         # Add optional attributes if they exist
                         for key in ["eta_message", "message", "fulfillment_type", "updated_at", "current_progress_percentage"]:
@@ -134,7 +137,7 @@ class DeliverooHKCoordinator(DataUpdateCoordinator):
                         self.update_interval = ACTIVE_ORDER_SCAN_INTERVAL
                         self._last_update = current_time
                         
-                        return {"state": current_step, "attributes": attributes}
+                        return {"state": current_step or "UNKNOWN", "attributes": attributes}
 
                     return {}
 
