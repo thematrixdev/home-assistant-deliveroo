@@ -4,6 +4,15 @@ from datetime import timedelta
 
 DOMAIN = "deliveroohk"
 CONF_TOKEN = "token"
+CONF_LOCALE = "locale"
+
+# Locale options
+LOCALE_TC = "Traditional Chinese"
+LOCALE_EN = "English"
+
+# Language headers
+LANG_TC = "zh"
+LANG_EN = "en"
 
 # Update intervals
 SCAN_INTERVAL = timedelta(minutes=1)  # Default interval for checking orders

@@ -13,13 +13,23 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import aiohttp_client
 
-from .const import API_ENDPOINT, CONF_TOKEN, DOMAIN
+from .const import (
+    API_ENDPOINT,
+    CONF_LOCALE,
+    CONF_TOKEN,
+    DOMAIN,
+    LANG_EN,
+    LANG_TC,
+    LOCALE_EN,
+    LOCALE_TC,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
 STEP_USER_DATA_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_TOKEN): str,
+        vol.Required(CONF_LOCALE, default=LOCALE_EN): vol.In([LOCALE_TC, LOCALE_EN]),
     }
 )
 
@@ -28,9 +38,12 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
     """Validate the user input allows us to connect."""
     session = aiohttp_client.async_get_clientsession(hass)
 
+    # Set language based on locale
+    lang = LANG_TC if data[CONF_LOCALE] == LOCALE_TC else LANG_EN
+    
     headers = {
         "Authorization": f"Bearer {data[CONF_TOKEN]}",
-        "accept-language": "zh"
+        "accept-language": lang
     }
     params = {"limit": "1", "offset": "0", "include_ugc": "true"}
 

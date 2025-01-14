@@ -26,6 +26,9 @@ from .const import (
     CONF_TOKEN,
     DEFAULT_TIMEZONE,
     DOMAIN,
+    LANG_EN,
+    LANG_TC,
+    LOCALE_TC,
     SCAN_INTERVAL,
 )
 
@@ -38,7 +41,7 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Deliveroo HK sensor based on a config entry."""
-    coordinator = DeliverooHKCoordinator(hass, entry.data[CONF_TOKEN])
+    coordinator = DeliverooHKCoordinator(hass, entry.data[CONF_TOKEN], entry.data.get("locale", "en"))
     await coordinator.async_config_entry_first_refresh()
 
     async_add_entities([DeliverooHKSensor(coordinator)], True)
@@ -47,7 +50,7 @@ async def async_setup_entry(
 class DeliverooHKCoordinator(DataUpdateCoordinator):
     """Class to manage fetching data from the API."""
 
-    def __init__(self, hass: HomeAssistant, token: str) -> None:
+    def __init__(self, hass: HomeAssistant, token: str, locale: str) -> None:
         """Initialize."""
         super().__init__(
             hass,
@@ -56,6 +59,7 @@ class DeliverooHKCoordinator(DataUpdateCoordinator):
             update_interval=SCAN_INTERVAL,
         )
         self.token = token
+        self.locale = locale
         self.session = aiohttp_client.async_get_clientsession(hass)
         self._active_order = False
         self._last_update = None
@@ -71,9 +75,12 @@ class DeliverooHKCoordinator(DataUpdateCoordinator):
                 current_time - self._last_update > ACTIVE_ORDER_SCAN_INTERVAL):
                 self.update_interval = ACTIVE_ORDER_SCAN_INTERVAL
             
+            # Set language based on locale
+            lang = LANG_TC if self.locale == LOCALE_TC else LANG_EN
+            
             headers = {
                 "Authorization": f"Bearer {self.token}",
-                "accept-language": "zh"
+                "accept-language": lang
             }
             params = {"limit": "1", "offset": "0", "include_ugc": "true"}
 
