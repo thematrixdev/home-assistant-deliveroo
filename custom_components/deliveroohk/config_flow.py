@@ -28,13 +28,26 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
     """Validate the user input allows us to connect."""
     session = aiohttp_client.async_get_clientsession(hass)
 
-    headers = {"Authorization": f"Bearer {data[CONF_TOKEN]}"}
+    headers = {
+        "Authorization": f"Bearer {data[CONF_TOKEN]}",
+        "accept-language": "zh"
+    }
     params = {"limit": "1", "offset": "0", "include_ugc": "true"}
+
+    _LOGGER.debug(
+        "Validating token - URL: %s, Headers: %s, Params: %s",
+        API_ENDPOINT,
+        headers,
+        params,
+    )
 
     try:
         async with session.get(API_ENDPOINT, headers=headers, params=params) as response:
             if response.status != 200:
                 raise InvalidAuth
+            
+            response_data = await response.json()
+            _LOGGER.debug("Validation response: %s", response_data)
             
             return {"title": "Deliveroo HK"}
 

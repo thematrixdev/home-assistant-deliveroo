@@ -71,8 +71,18 @@ class DeliverooHKCoordinator(DataUpdateCoordinator):
                 current_time - self._last_update > ACTIVE_ORDER_SCAN_INTERVAL):
                 self.update_interval = ACTIVE_ORDER_SCAN_INTERVAL
             
-            headers = {"Authorization": f"Bearer {self.token}"}
+            headers = {
+                "Authorization": f"Bearer {self.token}",
+                "accept-language": "zh"
+            }
             params = {"limit": "1", "offset": "0", "include_ugc": "true"}
+
+            _LOGGER.debug(
+                "Requesting order history - URL: %s, Headers: %s, Params: %s",
+                API_ENDPOINT,
+                headers,
+                params,
+            )
 
             async with self.session.get(
                 API_ENDPOINT, headers=headers, params=params
@@ -84,6 +94,8 @@ class DeliverooHKCoordinator(DataUpdateCoordinator):
                     return {}
 
                 data = await response.json()
+                _LOGGER.debug("Order history response: %s", data)
+
                 if not data.get("orders"):
                     self._active_order = False
                     self.update_interval = SCAN_INTERVAL
@@ -97,8 +109,16 @@ class DeliverooHKCoordinator(DataUpdateCoordinator):
 
                 # Get detailed order status
                 order_id = order["id"]
+                status_url = API_ORDER_STATUS_ENDPOINT.format(id=order_id)
+                
+                _LOGGER.debug(
+                    "Requesting order status - URL: %s, Headers: %s",
+                    status_url,
+                    headers,
+                )
+
                 async with self.session.get(
-                    API_ORDER_STATUS_ENDPOINT.format(id=order_id),
+                    status_url,
                     headers=headers,
                 ) as status_response:
                     if status_response.status != 200:
@@ -108,6 +128,8 @@ class DeliverooHKCoordinator(DataUpdateCoordinator):
                         return {}
 
                     status_data = await status_response.json()
+                    _LOGGER.debug("Order status response: %s", status_data)
+                    
                     attributes = {}
                     
                     if "data" in status_data and "attributes" in status_data["data"]:
