@@ -23,6 +23,9 @@ from .const import (
     ACTIVE_ORDER_SCAN_INTERVAL,
     API_ENDPOINT,
     API_ORDER_STATUS_ENDPOINT,
+    ADVISORY_MULTI_ORDER_TC,
+    STATE_MULTI_ORDER_TC,
+    STATE_MULTI_ORDER_EN,
     CONF_TOKEN,
     DEFAULT_TIMEZONE,
     DOMAIN,
@@ -150,6 +153,12 @@ class DeliverooHKCoordinator(DataUpdateCoordinator):
                         for step in processing_steps:
                             if step.get("is_current", False):
                                 current_step = step["title"]
+                                # Check for multi-order delivery
+                                if (current_step == "派送中" and 
+                                    attrs.get("advisory", "").find(ADVISORY_MULTI_ORDER_TC) != -1):
+                                    current_step = (STATE_MULTI_ORDER_TC 
+                                                  if self.locale == LOCALE_TC 
+                                                  else STATE_MULTI_ORDER_EN)
                                 break
                         
                         # If no current step found (shouldn't happen), use first step
@@ -157,7 +166,7 @@ class DeliverooHKCoordinator(DataUpdateCoordinator):
                             current_step = processing_steps[0]["title"]
                         
                         # Add optional attributes if they exist
-                        for key in ["eta_message", "message", "fulfillment_type", "updated_at", "current_progress_percentage"]:
+                        for key in ["eta_message", "message", "fulfillment_type", "updated_at", "current_progress_percentage", "advisory"]:
                             if key in attrs:
                                 attributes[key] = attrs[key]
                         
